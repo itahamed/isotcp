@@ -1,0 +1,19 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: iso8583-processor
+
+iso8583:
+  microservice-base-url: localhost:8081
+  tcp-server:
+    host: 0.0.0.0
+    port1: 9001
+    port2: 9002
+
+logging:
+  level:
+    root: INFO
+    com.example.iso8583: DEBUG
+    org.apache.camel: INFO

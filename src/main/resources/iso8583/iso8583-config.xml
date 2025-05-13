@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE j8583-config PUBLIC "-//J8583//DTD CONFIG 1.0//EN"
+        "http://j8583.sourceforge.net/j8583.dtd">
+<j8583-config>
+    <!-- Message templates -->
+
+    <!-- Financial message templates -->
+    <template type="0200">
+        <!-- Authorization Request -->
+        <field num="2" type="LLVAR" length="19" />   <!-- Primary Account Number -->
+        <field num="3" type="NUMERIC" length="6" />  <!-- Processing Code -->
+        <field num="4" type="AMOUNT" length="12" />  <!-- Transaction Amount -->
+        <field num="7" type="DATE10" length="10" />  <!-- Transmission Date and Time -->
+        <field num="11" type="NUMERIC" length="6" /> <!-- Systems Trace Audit Number -->
+        <field num="12" type="TIME" length="6" />    <!-- Local Transaction Time -->
+        <field num="13" type="DATE4" length="4" />   <!-- Local Transaction Date -->
+        <field num="14" type="DATE4" length="4" />   <!-- Expiration Date -->
+        <field num="18" type="NUMERIC" length="4" /> <!-- Merchant Type -->
+        <field num="22" type="ALPHA" length="12" />  <!-- Point of Service Entry Mode -->
+        <field num="25" type="NUMERIC" length="2" /> <!-- Point of Service Condition Code -->
+        <field num="32" type="LLVAR" length="11" />  <!-- Acquiring Institution ID -->
+        <field num="35" type="LLVAR" length="37" />  <!-- Track 2 Data -->
+        <field num="37" type="ALPHA" length="12" />  <!-- Retrieval Reference Number -->
+        <field num="41" type="ALPHA" length="8" />   <!-- Card Acceptor Terminal ID -->
+        <field num="42" type="ALPHA" length="15" />  <!-- Card Acceptor ID Code -->
+        <field num="43" type="ALPHA" length="40" />  <!-- Card Acceptor Name/Location -->
+        <field num="49" type="ALPHA" length="3" />   <!-- Transaction Currency Code -->
+    </template>
+
+    <template type="0210">
+        <!-- Financial Response -->
+        <field num="2" type="LLVAR" length="19" />   <!-- Primary Account Number -->
+        <field num="3" type="NUMERIC" length="6" />  <!-- Processing Code -->
+        <field num="4" type="AMOUNT" length="12" />  <!-- Transaction Amount -->
+        <field num="7" type="DATE10" length="10" />  <!-- Transmission Date and Time -->
+        <field num="11" type="NUMERIC" length="6" /> <!-- Systems Trace Audit Number -->
+        <field num="12" type="TIME" length="6" />    <!-- Local Transaction Time -->
+        <field num="13" type="DATE4" length="4" />   <!-- Local Transaction Date -->
+        <field num="37" type="ALPHA" length="12" />  <!-- Retrieval Reference Number -->
+        <field num="38" type="ALPHA" length="6" />   <!-- Authorization ID Response -->
+        <field num="39" type="ALPHA" length="2" />   <!-- Response Code -->
+        <field num="41" type="ALPHA" length="8" />   <!-- Card Acceptor Terminal ID -->
+        <field num="44" type="LLVAR" length="25" />  <!-- Additional Response Data -->
+    </template>
+
+    <!-- Authorization message templates -->
+    <template type="0100">
+        <!-- Authorization Request -->
+        <field num="2" type="LLVAR" length="19" />   <!-- Primary Account Number -->
+        <field num="3" type="NUMERIC" length="6" />  <!-- Processing Code -->
+        <field num="4" type="AMOUNT" length="12" />  <!-- Transaction Amount -->
+        <field num="7" type="DATE10" length="10" />  <!-- Transmission Date and Time -->
+        <field num="11" type="NUMERIC" length="6" /> <!-- Systems Trace Audit Number -->
+        <field num="12" type="TIME" length="6" />    <!-- Local Transaction Time -->
+        <field num="13" type="DATE4" length="4" />   <!-- Local Transaction Date -->
+        <field num="14" type="DATE4" length="4" />   <!-- Expiration Date -->
+        <field num="22" type="ALPHA" length="12" />  <!-- Point of Service Entry Mode -->
+        <field num="25" type="NUMERIC" length="2" /> <!-- Point of Service Condition Code -->
+        <field num="35" type="LLVAR" length="37" />  <!-- Track 2 Data -->
+        <field num="41" type="ALPHA" length="8" />   <!-- Card Acceptor Terminal ID -->
+        <field num="42" type="ALPHA" length="15" />  <!-- Card Acceptor ID Code -->
+    </template>
+
+    <template type="0110">
+        <!-- Authorization Response -->
+        <field num="2" type="LLVAR" length="19" />   <!-- Primary Account Number -->
+        <field num="3" type="NUMERIC" length="6" />  <!-- Processing Code -->
+        <field num="4" type="AMOUNT" length="12" />  <!-- Transaction Amount -->
+        <field num="11" type="NUMERIC" length="6" /> <!-- Systems Trace Audit Number -->
+        <field num="38" type="ALPHA" length="6" />   <!-- Authorization ID Response -->
+        <field num="39" type="ALPHA" length="2" />   <!-- Response Code -->
+        <field num="44" type="LLVAR" length="25" />  <!-- Additional Response Data -->
+    </template>
+
+    <!-- Reversal message templates -->
+    <template type="0400">
+        <!-- Reversal Request -->
+        <field num="2" type="LLVAR" length="19" />   <!-- Primary Account Number -->
+        <field num="3" type="NUMERIC" length="6" />  <!-- Processing Code -->
+        <field num="4" type="AMOUNT" length="12" />  <!-- Transaction Amount -->
+        <field num="11" type="NUMERIC" length="6" /> <!-- Systems Trace Audit Number -->
+        <field num="37" type="ALPHA" length="12" />  <!-- Retrieval Reference Number -->
+        <field num="38" type="ALPHA" length="6" />   <!-- Authorization ID Response -->
+        <field num="39" type="ALPHA" length="2" />   <!-- Response Code -->
+        <field num="41" type="ALPHA" length="8" />   <!-- Card Acceptor Terminal ID -->
+        <field num="56" type="LLLVAR" length="35" /> <!-- Original Transaction Data -->
+    </template>
+
+    <template type="0410">
+        <!-- Reversal Response -->
+        <field num="2" type="LLVAR" length="19" />   <!-- Primary Account Number -->
+        <field num="3" type="NUMERIC" length="6" />  <!-- Processing Code -->
+        <field num="4" type="AMOUNT" length="12" />  <!-- Transaction Amount -->
+        <field num="11" type="NUMERIC" length="6" /> <!-- Systems Trace Audit Number -->
+        <field num="39" type="ALPHA" length="2" />   <!-- Response Code -->
+    </template>
+
+    <!-- Network Management message templates -->
+    <template type="0800">
+        <!-- Network Management Request -->
+        <field num="3" type="NUMERIC" length="6" />  <!-- Processing Code -->
+        <field num="7" type="DATE10" length="10" />  <!-- Transmission Date and Time -->
+        <field num="11" type="NUMERIC" length="6" /> <!-- Systems Trace Audit Number -->
+        <field num="70" type="NUMERIC" length="3" /> <!-- Network Management Information Code -->
+    </template>
+
+    <template type="0810">
+        <!-- Network Management Response -->
+        <field num="3" type="NUMERIC" length="6" />  <!-- Processing Code -->
+        <field num="11" type="NUMERIC" length="6" /> <!-- Systems Trace Audit Number -->
+        <field num="39" type="ALPHA" length="2" />   <!-- Response Code -->
+        <field num="70" type="NUMERIC" length="3" /> <!-- Network Management Information Code -->
+    </template>
+</j8583-config>

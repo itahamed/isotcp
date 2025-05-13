@@ -1,4 +1,4 @@
-package com.it.iso.model;
+package com.it.iso.client.model;
 
 import java.util.Map;
 import java.util.HashMap;

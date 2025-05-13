@@ -1,7 +1,7 @@
-package com.it.iso.converter;
+package com.it.iso.client.converter;
 import java.util.Map;
 
-import com.it.iso.model.IsoJsonMessage;
+import com.it.iso.client.model.IsoJsonMessage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import com.fasterxml.jackson.databind.ObjectMapper;

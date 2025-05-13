@@ -1,4 +1,4 @@
-package com.it.iso.config;
+package com.it.iso.client.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

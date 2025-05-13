@@ -1,4 +1,4 @@
-package com.it.iso.codec;
+package com.it.iso.client.codec;
 
 import java.nio.ByteBuffer;
 import io.netty.buffer.ByteBuf;

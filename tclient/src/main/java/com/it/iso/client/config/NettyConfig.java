@@ -1,8 +1,9 @@
-package com.it.iso.config;
+package com.it.iso.client.config;
 
 import java.util.List;
 
-import com.it.iso.codec.IsoMessageEncoder;
+import com.it.iso.client.codec.IsoMessageDecoder;
+import com.it.iso.client.codec.IsoMessageEncoder;
 import org.apache.camel.CamelContext;
 import org.apache.camel.component.netty.NettyComponent;
 import org.apache.camel.component.netty.NettyConfiguration;
@@ -42,7 +43,7 @@ public class NettyConfig {
         config.setDisconnect(false);
         
         // Add decoder and encoder
-        config.setDecoders(List.of(new com.it.iso.codec.IsoMessageDecoder(messageFactory)));
+        config.setDecoders(List.of(new IsoMessageDecoder(messageFactory)));
         config.setEncoders(List.of(new IsoMessageEncoder()));
         
         return config;
@@ -58,7 +59,7 @@ public class NettyConfig {
         config.setDisconnect(false);
         
         // Add decoder and encoder
-        config.setDecoders(List.of(new com.it.iso.codec.IsoMessageDecoder(messageFactory)));
+        config.setDecoders(List.of(new IsoMessageDecoder(messageFactory)));
         config.setEncoders(List.of(new IsoMessageEncoder()));
         
         return config;

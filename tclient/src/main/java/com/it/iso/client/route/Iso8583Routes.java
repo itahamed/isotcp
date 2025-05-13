@@ -1,8 +1,8 @@
-package com.it.iso.route;
+package com.it.iso.client.route;
 
-import com.it.iso.config.Iso8583Properties;
-import com.it.iso.converter.IsoMessageConverter;
-import com.it.iso.model.IsoJsonMessage;
+import com.it.iso.client.config.Iso8583Properties;
+import com.it.iso.client.converter.IsoMessageConverter;
+import com.it.iso.client.model.IsoJsonMessage;
 import org.apache.camel.Exchange;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.model.dataformat.JsonLibrary;

@@ -1,4 +1,4 @@
-package com.it.iso.config;
+package com.it.iso.client.config;
 
 import java.nio.charset.StandardCharsets;
 import org.springframework.context.annotation.Bean;

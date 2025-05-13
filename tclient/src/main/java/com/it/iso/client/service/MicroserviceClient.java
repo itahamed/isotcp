@@ -1,7 +1,7 @@
-package com.it.iso.service;
+package com.it.iso.client.service;
 
-import com.it.iso.config.Iso8583Properties;
-import com.it.iso.model.IsoJsonMessage;
+import com.it.iso.client.config.Iso8583Properties;
+import com.it.iso.client.model.IsoJsonMessage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;

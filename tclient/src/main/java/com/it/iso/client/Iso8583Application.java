@@ -1,4 +1,4 @@
-package com.it.iso;
+package com.it.iso.client;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

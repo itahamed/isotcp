@@ -35,6 +35,37 @@ public class Iso8583Routes extends RouteBuilder {
     @Override
     public void configure() throws Exception {
 
+        // Error handler
+        errorHandler(deadLetterChannel("direct:error")
+                .maximumRedeliveries(3)
+                .redeliveryDelay(1000)
+                .useOriginalMessage());
+
+        // Error processing route
+        from("direct:error")
+                .log("Error processing ISO message: ${exception.message}")
+                .process(exchange -> {
+                    Exception exception = exchange.getProperty(Exchange.EXCEPTION_CAUGHT, Exception.class);
+                    IsoMessage requestMessage = exchange.getIn().getBody(IsoMessage.class);
+
+                    if (requestMessage == null) {
+                        requestMessage = exchange.getIn().getBody(IsoMessage.class);
+                    }
+
+                    if (requestMessage != null) {
+                        // Create an error response
+                        IsoJsonMessage errorJson = new IsoJsonMessage();
+                        errorJson.setResponseCode(RC_96_SYSTEM_MALFUNCTION); // System error
+
+                        IsoMessage errorResponse = converter.createResponseMessage(requestMessage, errorJson);
+                        exchange.getIn().setBody(errorResponse);
+                    }else{
+                        log.warn("Could not retrieve original IsoMessage to create an error response for exception: {}", exception.getMessage());
+                    }
+                })
+                // Send back to the original endpoint handler
+                .to("direct:sendResponse");
+
         // Route for first TCP port
         createTcpListenerRoute(properties.getTcpServer().getPort1(), "port1-receiver");
         createTcpListenerRoute(properties.getTcpServer().getPort2(), "port2-receiver");
@@ -104,37 +135,6 @@ public class Iso8583Routes extends RouteBuilder {
                 exchange.getIn().setBody(responseMessage);
             })
             .to("direct:sendResponse");
-
-        // Error handler
-        errorHandler(deadLetterChannel("direct:error")
-                .maximumRedeliveries(3)
-                .redeliveryDelay(1000)
-                .useOriginalMessage());
-
-        // Error processing route
-        from("direct:error")
-                .log("Error processing ISO message: ${exception.message}")
-                .process(exchange -> {
-                    Exception exception = exchange.getProperty(Exchange.EXCEPTION_CAUGHT, Exception.class);
-                    IsoMessage requestMessage = exchange.getIn().getBody(IsoMessage.class);
-
-                    if (requestMessage == null) {
-                        requestMessage = exchange.getIn().getBody(IsoMessage.class);
-                    }
-
-                    if (requestMessage != null) {
-                        // Create an error response
-                        IsoJsonMessage errorJson = new IsoJsonMessage();
-                        errorJson.setResponseCode(RC_96_SYSTEM_MALFUNCTION); // System error
-
-                        IsoMessage errorResponse = converter.createResponseMessage(requestMessage, errorJson);
-                        exchange.getIn().setBody(errorResponse);
-                    }else{
-                        log.warn("Could not retrieve original IsoMessage to create an error response for exception: {}", exception.getMessage());
-                    }
-                })
-                // Send back to the original endpoint handler
-                .to("direct:sendResponse");
 
         // Send response back through same port
         from("direct:sendResponse")

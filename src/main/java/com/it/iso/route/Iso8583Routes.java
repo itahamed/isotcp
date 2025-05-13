@@ -19,7 +19,10 @@ import com.solab.iso8583.MessageFactory;
 @Slf4j
 @Component
 public class Iso8583Routes extends RouteBuilder {
-    
+
+    // Response Codes
+    private static final String RC_96_SYSTEM_MALFUNCTION = "96";
+
     @Autowired
     private Iso8583Properties properties;
     
@@ -31,47 +34,9 @@ public class Iso8583Routes extends RouteBuilder {
     
     @Override
     public void configure() throws Exception {
-        // Error handler
-        errorHandler(deadLetterChannel("direct:error")
-                .maximumRedeliveries(3)
-                .redeliveryDelay(1000)
-                .useOriginalMessage());
-
-        // Error processing route
-        from("direct:error")
-            .log("Error processing ISO message: ${exception.message}")
-            .process(exchange -> {
-                Exception exception = exchange.getProperty(Exchange.EXCEPTION_CAUGHT, Exception.class);
-                IsoMessage requestMessage = exchange.getIn().getBody(IsoMessage.class);
-                if (requestMessage != null) {
-                    // Create an error response
-                    IsoJsonMessage errorJson = new IsoJsonMessage();
-                    errorJson.setResponseCode("96"); // System error
-
-                    IsoMessage errorResponse = converter.createResponseMessage(requestMessage, errorJson);
-                    exchange.getIn().setBody(errorResponse);
-                }
-            })
-            // Send back to the original endpoint handler
-            .to("direct:sendResponse");
 
         // Route for first TCP port
-
-       /* from("netty:tcp://" + properties.getTcpServer().getHost() + ":" + properties.getTcpServer().getPort1() + "?sync=true")
-            .id("port1-receiver")
-            .log("Received ISO message on port " + properties.getTcpServer().getPort1())
-            .setHeader("SourcePort", constant(String.valueOf(properties.getTcpServer().getPort1())))
-            .to("direct:processIsoMessage");
-
-        // Route for second TCP port
-        from("netty:tcp://" + properties.getTcpServer().getHost() + ":" + properties.getTcpServer().getPort2() + "?sync=true")
-            .id("port2-receiver")
-            .log("Received ISO message on port " + properties.getTcpServer().getPort2())
-            .setHeader("SourcePort", constant(String.valueOf(properties.getTcpServer().getPort2())))
-            .to("direct:processIsoMessage");*/
-
         createTcpListenerRoute(properties.getTcpServer().getPort1(), "port1-receiver");
-
         createTcpListenerRoute(properties.getTcpServer().getPort2(), "port2-receiver");
 
         // Common ISO message processing
@@ -112,43 +77,11 @@ public class Iso8583Routes extends RouteBuilder {
                     .log("Unknown message type: ${body.messageType}")
                     .process(exchange -> {
                         IsoJsonMessage jsonMessage = exchange.getIn().getBody(IsoJsonMessage.class);
-                        jsonMessage.setResponseCode("96"); // Invalid message type
+                        jsonMessage.setResponseCode(RC_96_SYSTEM_MALFUNCTION); // Invalid message type
                         exchange.getIn().setBody(jsonMessage);
                     })
                     .to("direct:prepareResponse")
             .end();
-
-       /* // Financial service route
-        from("direct:invokeFinancialService")
-            .marshal().json(JsonLibrary.Jackson)
-            .log("Sending to financial service: ${body}")
-            .to("http://" + properties.getMicroserviceBaseUrl() + "/api/financial")
-            .unmarshal().json(JsonLibrary.Jackson, IsoJsonMessage.class)
-            .to("direct:prepareResponse");
-
-        // Authorization service route
-        from("direct:invokeAuthorizationService")
-            .marshal().json(JsonLibrary.Jackson)
-            .log("Sending to authorization service: ${body}")
-            .to("http://" + properties.getMicroserviceBaseUrl() + "/api/authorization")
-            .unmarshal().json(JsonLibrary.Jackson, IsoJsonMessage.class)
-            .to("direct:prepareResponse");
-
-        // Reversal service route
-        from("direct:invokeReversalService")
-            .marshal().json(JsonLibrary.Jackson)
-            .log("Sending to reversal service: ${body}")
-            .to("http://" + properties.getMicroserviceBaseUrl() + "/api/reversal")
-            .unmarshal().json(JsonLibrary.Jackson, IsoJsonMessage.class)
-            .to("direct:prepareResponse");
-
-        // Network management service route
-        from("direct:invokeNetworkService")
-            .marshal().json(JsonLibrary.Jackson)
-            .log("Sending to network service: ${body}")
-            .to("http://" + properties.getMicroserviceBaseUrl() + "/api/network")
-            .unmarshal().json(JsonLibrary.Jackson, IsoJsonMessage.class)
-            .to("direct:prepareResponse");*/
 
         from("direct:invokeGenericMicroservice")
                 .id("generic-microservice-invoker")
@@ -172,12 +105,43 @@ public class Iso8583Routes extends RouteBuilder {
             })
             .to("direct:sendResponse");
 
+        // Error handler
+        errorHandler(deadLetterChannel("direct:error")
+                .maximumRedeliveries(3)
+                .redeliveryDelay(1000)
+                .useOriginalMessage());
+
+        // Error processing route
+        from("direct:error")
+                .log("Error processing ISO message: ${exception.message}")
+                .process(exchange -> {
+                    Exception exception = exchange.getProperty(Exchange.EXCEPTION_CAUGHT, Exception.class);
+                    IsoMessage requestMessage = exchange.getIn().getBody(IsoMessage.class);
+
+                    if (requestMessage == null) {
+                        requestMessage = exchange.getIn().getBody(IsoMessage.class);
+                    }
+
+                    if (requestMessage != null) {
+                        // Create an error response
+                        IsoJsonMessage errorJson = new IsoJsonMessage();
+                        errorJson.setResponseCode(RC_96_SYSTEM_MALFUNCTION); // System error
+
+                        IsoMessage errorResponse = converter.createResponseMessage(requestMessage, errorJson);
+                        exchange.getIn().setBody(errorResponse);
+                    }else{
+                        log.warn("Could not retrieve original IsoMessage to create an error response for exception: {}", exception.getMessage());
+                    }
+                })
+                // Send back to the original endpoint handler
+                .to("direct:sendResponse");
+
         // Send response back through same port
         from("direct:sendResponse")
-            .log("Sending ISO response: ${body}")
-            .process(exchange -> {
-                log.info("Response ISO message: {}", exchange.getIn().getBody(IsoMessage.class).debugString());
-            });
+                .log("Sending ISO response: ${body}")
+                .process(exchange -> {
+                    log.info("Response ISO message: {}", exchange.getIn().getBody(IsoMessage.class).debugString());
+                });
     }
 
     private void createTcpListenerRoute(int port, String routeId) {

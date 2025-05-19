@@ -60,10 +60,6 @@ public class Iso8583Routes extends RouteBuilder {
                     Exception exception = exchange.getProperty(Exchange.EXCEPTION_CAUGHT, Exception.class);
                     IsoMessage requestMessage = exchange.getIn().getBody(IsoMessage.class);
 
-                    if (requestMessage == null) {
-                        requestMessage = exchange.getIn().getBody(IsoMessage.class);
-                    }
-
                     if (requestMessage != null) {
                         // Create an error response
                         IsoJsonMessage errorJson = new IsoJsonMessage();
@@ -143,7 +139,7 @@ public class Iso8583Routes extends RouteBuilder {
                 .removeHeaders("CamelHttp*") // Clean up potential old HTTP headers
                 .setHeader(Exchange.HTTP_METHOD, constant("POST"))
                 .setHeader(Exchange.CONTENT_TYPE, constant("application/json"))
-                .toD("http://" + properties.getMicroserviceBaseUrl() + "${header.TargetServicePath}" + "?bridgeEndpoint=true")
+                .toD("netty-http:http://" + properties.getMicroserviceBaseUrl() + "${header.TargetServicePath}" + "?bridgeEndpoint=true")
                 .log("Response from microservice: ${body}")
 
                 // 5. Process the json response and convert to FMSResponse object
@@ -191,21 +187,31 @@ public class Iso8583Routes extends RouteBuilder {
 
                     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
                     isoMessage.write(byteArrayOutputStream, 0);
-                    String response = new String(byteArrayOutputStream.toByteArray());
+                    byte[] responseBytes = byteArrayOutputStream.toByteArray();
 
-                    log.info("sendResponse: response: {}", response);
+                    // Retrieve the original Netty channel
+                    io.netty.channel.Channel originalChannel = exchange.getProperty("OriginalNettyChannel", io.netty.channel.Channel.class);
 
-                    exchange.getMessage().setBody(response);
+                    if (originalChannel != null && originalChannel.isActive()) {
+                        log.info("Sending response bytes to original Netty channel: {}", originalChannel.remoteAddress());
+                        originalChannel.writeAndFlush(io.netty.buffer.Unpooled.wrappedBuffer(responseBytes));
+                    } else {
+                        log.warn("OriginalNettyChannel not found or inactive. Cannot send response for exchangeId: {}", exchange.getExchangeId());
+                    }
+
+                    log.info("sendResponse: response: {}", responseBytes);
+                    exchange.getMessage().setBody(responseBytes);
                 });
     }
 
     private void createTcpListenerRoute(int port, String routeId) {
         from("netty:tcp://" + properties.getTcpServer().getHost() + ":" + port
-                       + "?sync=true&clientMode=true"
+                       + "?sync=false&clientMode=true"
         )
                 .id(routeId)
                 .log("Received ISO message on port " + port)
                 .setHeader("SourcePort", constant(String.valueOf(port)))
+                .setProperty("OriginalNettyChannel", simple("${header.CamelNettyChannel}"))
                 .to("direct:processIsoMessage");
     }
 }

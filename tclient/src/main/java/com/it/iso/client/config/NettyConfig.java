@@ -26,8 +26,10 @@ public class NettyConfig {
     private MessageFactory<IsoMessage> messageFactory;
     
     @Bean(name = "netty")
-    public NettyComponent nettyComponent() {
+    public NettyComponent nettyComponent(NettyConfiguration nettyPort1Config, NettyConfiguration nettyPort2Config) {
         NettyComponent netty = new NettyComponent();
+        netty.setConfiguration(nettyPort1Config);
+        netty.setConfiguration(nettyPort2Config);
         netty.setCamelContext(camelContext);
         return netty;
     }
@@ -37,15 +39,16 @@ public class NettyConfig {
         NettyConfiguration config = new NettyConfiguration();
 
         config.setProtocol("tcp");
+        config.setClientMode(true);
 
         config.setSync(true);
         config.setReuseAddress(true);
         config.setDisconnect(false);
-        
+
         // Add decoder and encoder
         config.setDecoders(List.of(new IsoMessageDecoder(messageFactory)));
         config.setEncoders(List.of(new IsoMessageEncoder()));
-        
+
         return config;
     }
     

@@ -32,6 +32,14 @@ public class IsoMessageConverter {
         jsonMessage.setMessageType(String.valueOf(isoMessage.getType()));
         jsonMessage.setSourcePort(sourcePort);
 
+        if (isoMessage.hasField(3)) {
+            String processingCode = isoMessage.getObjectValue(3).toString();
+            jsonMessage.setProcessingCode(processingCode);
+            log.debug("Extracted Processing Code (Field 3): {}", processingCode);
+        } else {
+            log.error("ISO message does not have Field 3 (Processing Code)");
+        }
+
         // Extract all fields from the ISO message
         for (int i = 2; i <= 128; i++) {
             if (isoMessage.hasField(i)) {

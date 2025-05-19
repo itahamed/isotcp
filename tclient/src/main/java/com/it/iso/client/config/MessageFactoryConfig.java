@@ -7,6 +7,7 @@ import com.solab.iso8583.IsoMessage;
 import com.solab.iso8583.MessageFactory;
 import com.solab.iso8583.impl.SimpleTraceGenerator;
 import com.solab.iso8583.parse.ConfigParser;
+import org.springframework.context.annotation.Scope;
 
 /**
  * Configuration for ISO8583 message factory

@@ -5,10 +5,13 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToByteEncoder;
 import com.solab.iso8583.IsoMessage;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Component;
 
 /**
  * Netty encoder for ISO8583 messages
  */
+@Component("isoMessageEncoder")
 public class IsoMessageEncoder extends MessageToByteEncoder<IsoMessage> {
 
     @Override

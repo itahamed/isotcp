@@ -1,7 +1,11 @@
 package com.it.iso.client.route;
 
 import com.it.iso.client.config.Iso8583Properties;
+import com.it.iso.client.infra.rest.mapper.FmsResponseToIsoJsonMapper;
+import com.it.iso.client.infra.rest.mapper.IsoJsonToFmsRequestMapper;
 import com.it.iso.client.converter.IsoMessageConverter;
+import com.it.iso.client.infra.rest.stub.FMSRequest;
+import com.it.iso.client.infra.rest.stub.FMSResponse;
 import com.it.iso.client.model.IsoJsonMessage;
 import org.apache.camel.Exchange;
 import org.apache.camel.builder.RouteBuilder;
@@ -11,6 +15,8 @@ import org.springframework.stereotype.Component;
 import lombok.extern.slf4j.Slf4j;
 import com.solab.iso8583.IsoMessage;
 import com.solab.iso8583.MessageFactory;
+
+import java.io.ByteArrayOutputStream;
 
 
 /**
@@ -31,15 +37,21 @@ public class Iso8583Routes extends RouteBuilder {
     
     @Autowired
     private MessageFactory<IsoMessage> messageFactory;
-    
+
+    @Autowired
+    private IsoJsonToFmsRequestMapper fmsRequestMapper; // Autowire the mapper
+
+    @Autowired
+    private FmsResponseToIsoJsonMapper fmsResponseMapper;
+
     @Override
     public void configure() throws Exception {
 
         // Error handler
-        errorHandler(deadLetterChannel("direct:error")
+        /*errorHandler(deadLetterChannel("direct:error")
                 .maximumRedeliveries(3)
                 .redeliveryDelay(1000)
-                .useOriginalMessage());
+                .useOriginalMessage());*/
 
         // Error processing route
         from("direct:error")
@@ -68,15 +80,18 @@ public class Iso8583Routes extends RouteBuilder {
 
         // Route for first TCP port
         createTcpListenerRoute(properties.getTcpServer().getPort1(), "port1-receiver");
-        createTcpListenerRoute(properties.getTcpServer().getPort2(), "port2-receiver");
+      //  createTcpListenerRoute(properties.getTcpServer().getPort2(), "port2-receiver");
 
         // Common ISO message processing
         from("direct:processIsoMessage")
             .id("iso-processor")
             .log("Processing ISO Message: ${body}")
             .process(exchange -> {
+
                 // Convert ISO message to JSON
-                IsoMessage isoMessage = exchange.getIn().getBody(IsoMessage.class);
+                String incoming = exchange.getIn().getBody(String.class);
+                IsoMessage isoMessage = messageFactory.parseMessage(incoming.getBytes(), 12);
+
                 String sourcePort = exchange.getIn().getHeader("SourcePort", String.class);
 
                 // Store original message for response creation
@@ -88,21 +103,9 @@ public class Iso8583Routes extends RouteBuilder {
             })
             // Identify message type and route accordingly
             .choice()
-                .when(simple("${body.messageType} == '0200'"))
+                .when(simple("${body.messageType} == '528'"))
                     .log("Processing financial request")
                     .setHeader("TargetServicePath", constant("/api/financial"))
-                    .to("direct:invokeGenericMicroservice")
-                .when(simple("${body.messageType} == '0100'"))
-                    .log("Processing authorization request")
-                    .setHeader("TargetServicePath", constant("/api/authorization"))
-                    .to("direct:invokeGenericMicroservice")
-                .when(simple("${body.messageType} == '0400'"))
-                    .log("Processing reversal request")
-                    .setHeader("TargetServicePath", constant("/api/reversal"))
-                    .to("direct:invokeGenericMicroservice")
-                .when(simple("${body.messageType} == '0800'"))
-                    .log("Processing network management request")
-                    .setHeader("TargetServicePath", constant("/api/network"))
                     .to("direct:invokeGenericMicroservice")
                 .otherwise()
                     .log("Unknown message type: ${body.messageType}")
@@ -116,11 +119,53 @@ public class Iso8583Routes extends RouteBuilder {
 
         from("direct:invokeGenericMicroservice")
                 .id("generic-microservice-invoker")
-                .marshal().json(JsonLibrary.Jackson)
                 .log("Sending to microservice at ${header.TargetServicePath}: ${body}")
-                // Dynamically build the recipient URI
-                .recipientList(simple("http://" + properties.getMicroserviceBaseUrl() + "${header.TargetServicePath}"))
-                .unmarshal().json(JsonLibrary.Jackson, IsoJsonMessage.class)
+
+                .process(exchange -> {
+
+                    IsoJsonMessage requestIsoMessage = exchange.getIn().getBody(IsoJsonMessage.class);
+
+                    // 1. Retrieve processing code from IsoJsonMessage
+                    String processingCode = requestIsoMessage.getProcessingCode();
+                    log.info("Retrieved Processing Code for FMS mapping: {}", processingCode);
+                    // The processingCode is already part of isoJsonMessage and will be mapped by MapStruct
+
+                    // 2. Use mapstruct to map data from IsoJsonMessage to FMSRequest
+                    FMSRequest fmsRequest = fmsRequestMapper.toFmsRequest(requestIsoMessage);
+                    log.info("Mapped IsoJsonMessage to FMSRequest: {}", fmsRequest); // Ensure FMSRequest has a meaningful toString() or use a JSON logger
+
+                    exchange.getIn().setBody(fmsRequest);
+
+                })
+                // 3. Construct API request header & 4. Call /api/financial post endpoint
+                .marshal().json(JsonLibrary.Jackson) // Convert FMSRequest to JSON string
+                .log("Marshalled FMSRequest to JSON: ${body}")
+                .removeHeaders("CamelHttp*") // Clean up potential old HTTP headers
+                .setHeader(Exchange.HTTP_METHOD, constant("POST"))
+                .setHeader(Exchange.CONTENT_TYPE, constant("application/json"))
+                .toD("http://" + properties.getMicroserviceBaseUrl() + "${header.TargetServicePath}" + "?bridgeEndpoint=true")
+                .log("Response from microservice: ${body}")
+
+                // 5. Process the json response and convert to FMSResponse object
+                .unmarshal().json(JsonLibrary.Jackson, FMSResponse.class)
+                .log("Unmarshalled JSON response to FMSResponse: ${body}")
+
+                // 6. Construct new IsoJsonMessage and use mapstruct to map data from FMSResponse and original requestIsoMessage
+                .process(exchange -> {
+                    FMSResponse fmsResponse = exchange.getIn().getBody(FMSResponse.class);
+                    IsoJsonMessage originalRequestIsoJsonMessage = exchange.getProperty("originalRequestIsoJsonMessage", IsoJsonMessage.class);
+
+                    if (originalRequestIsoJsonMessage == null) {
+                        log.error("Original IsoJsonMessage not found in exchange properties for response mapping.");
+                        // Handle error appropriately, perhaps by creating a default error IsoJsonMessage
+                        throw new IllegalStateException("Original IsoJsonMessage (originalRequestIsoJsonMessage) not found.");
+                    }
+
+                    IsoJsonMessage finalIsoJsonResponse = fmsResponseMapper.toIsoJsonMessage(fmsResponse, originalRequestIsoJsonMessage);
+                    log.info("Mapped FMSResponse to final IsoJsonMessage: {}", finalIsoJsonResponse);
+                    exchange.getIn().setBody(finalIsoJsonResponse);
+                })
+
                 .to("direct:prepareResponse");
 
         // Prepare ISO response
@@ -140,12 +185,24 @@ public class Iso8583Routes extends RouteBuilder {
         from("direct:sendResponse")
                 .log("Sending ISO response: ${body}")
                 .process(exchange -> {
-                    log.info("Response ISO message: {}", exchange.getIn().getBody(IsoMessage.class).debugString());
+                    log.info("sendResponse: ISO message: {}", exchange.getIn().getBody(IsoMessage.class).debugString());
+
+                    IsoMessage isoMessage = exchange.getIn().getBody(IsoMessage.class);
+
+                    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+                    isoMessage.write(byteArrayOutputStream, 0);
+                    String response = new String(byteArrayOutputStream.toByteArray());
+
+                    log.info("sendResponse: response: {}", response);
+
+                    exchange.getMessage().setBody(response);
                 });
     }
 
     private void createTcpListenerRoute(int port, String routeId) {
-        from("netty:tcp://" + properties.getTcpServer().getHost() + ":" + port + "?sync=true")
+        from("netty:tcp://" + properties.getTcpServer().getHost() + ":" + port
+                       + "?sync=true&clientMode=true"
+        )
                 .id(routeId)
                 .log("Received ISO message on port " + port)
                 .setHeader("SourcePort", constant(String.valueOf(port)))
